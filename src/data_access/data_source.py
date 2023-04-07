@@ -13,12 +13,8 @@ class DataSource:
     def get_secondary_data_frame(self):
         return pd.read_csv(self.secondary_data_path, delimiter=";")
 
-    def exchange_nones_to_false(self, df):
-        new_df = pd.DataFrame()
-        for col in df.columns:
-            vect = np.array(df[col]).astype(str)
-            vect[np.isnan(vect)] = 0
-            new_df = pd.concat([new_df, {col:vect}], axis=1)
-        return new_df
-
+    def exchange_nones_to_false(self, vector, new_value='f'):
+        new_vector = vector.copy()
+        new_vector[new_vector.isnull()] = new_value
+        return new_vector
 
