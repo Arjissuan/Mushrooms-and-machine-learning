@@ -13,8 +13,8 @@ class DataSource:
     def get_secondary_data_frame(self):
         return pd.read_csv(self.secondary_data_path, delimiter=";")
 
-    def exchange_nones_to_false(self, vector, new_value='f'):
-        new_vector = vector.copy()
-        new_vector[new_vector.isnull()] = new_value
-        return new_vector
+    def exchange_nones_to_value(self, data_frame, new_value='f'):
+        funk = lambda x: data_frame[x].replace(np.nan, new_value)
+        new_df = list(map(funk, data_frame.columns))
+        return pd.DataFrame(new_df).T
 
