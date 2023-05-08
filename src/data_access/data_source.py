@@ -14,7 +14,7 @@ class DataSource:
     def get_secondary_data_frame(self):
         return pd.read_csv(self.secondary_data_path, delimiter=";")
 
-    def exchange_nones_to_value(self, data_frame, new_value='f'):
+    def exchange_nones_to_value(self, data_frame, new_value='v'):
         funk = lambda x: data_frame[x].replace(np.nan, new_value)
         new_df = list(map(funk, data_frame.columns))
         return pd.DataFrame(new_df).T
@@ -42,7 +42,8 @@ class DataSource:
         x_train, x_test, y_train, y_test = train_test_split(dataframe.drop(columns=['clas']),
                                                             dataframe['clas'],
                                                             test_size=size,
-                                                            random_state=42)
+                                                            random_state=42,
+                                                            )
 
         return x_train, y_train, x_test, y_test
 
@@ -52,4 +53,30 @@ class DataSource:
         perc = lambda x: (x, (df[x][row]*100)/np.sum(df[x]))
         df_perc = dict(map(perc, df.columns))
         return pd.DataFrame(index=['t%_of_sum'], data=df_perc)
+
+    def exchange_str_to_ints(self, df):
+        cols = df.drop(['clas',"cap-diameter", 'stem-width', 'stem-height'], axis=1 ).columns
+        sets = list(map(lambda x:tuple(set(df[x])), cols))
+        new_sets = []
+        for s in sets:
+            lil_set = []
+            for i in range(len(s)):
+                lil_set.append(i)
+            new_sets.append(lil_set)
+        func = lambda x: df[cols[x]].replace(to_replace=sets[x], value=new_sets[x])
+        #print(list(zip(sets,new_sets,cols)))
+        new_df = list(map(func, range(len(cols))))
+        new_df = pd.DataFrame(data=new_df.copy()).T
+        fresh_df = pd.concat([df.loc[:, ['clas',"cap-diameter", 'stem-width', 'stem-height']], new_df], axis=1)
+        return fresh_df
+
+    def exchange_str_to_vect(self, df):
+        cols = df.drop(['clas',"cap-diameter", 'stem-width', 'stem-height'], axis=1).columns
+        sets = list(map(lambda x: tuple(set(df[x])), cols))
+        new_sets = []
+
+
+
+
+
 
