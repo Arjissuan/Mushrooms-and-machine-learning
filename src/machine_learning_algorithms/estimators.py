@@ -4,6 +4,7 @@ from sklearn import svm
 from sklearn.ensemble import RandomForestClassifier
 from sklearn import tree
 from sklearn.naive_bayes import GaussianNB
+from sklearn.neural_network import MLPClassifier
 from sklearn.linear_model import Perceptron
 class Learning_method:
     def __init__(self, test_x, test_y, train_x, train_y):
@@ -32,17 +33,26 @@ class Learning_method:
         gnb.fit(X=self.train_x,y=self.train_y)
         return gnb.predict(X=self.test_x)
 
-    def perceptron(self, ):
-        lnm = Perceptron()
-        lnm.fit(self.train_x, self.train_y)
-        return lnm.predict(self.test_x)
+    def network(self, layers=(4,2), activ_func="relu"):
+        est = MLPClassifier(hidden_layer_sizes=layers, activation=activ_func)
+        est.fit(X=self.train_x, y=self.train_y)
+        return est.predict(self.test_x)
 
-    def is_same(self, estim_clas):
-        est = np.array(estim_clas)
+    def generalization(self, estim_clas):
+        est = np.asarray(estim_clas)
         test = pd.Series.to_numpy(self.test_y)
         numb_of_good = np.count_nonzero(est == test)
+        accuracy = np.divide(np.multiply(numb_of_good,100), len(test))
+        TN = np.logical_and(self.test_y == "e", estim_clas=="e")
+        TP = np.logical_and(self.test_y == "p", estim_clas=="p")
+        FN = np.logical_and(self.test_y=="e", estim_clas=="p")
+        FP = np.logical_and(self.test_y=="p", estim_clas=="e")
+        return np.array([accuracy, TN, TP, FN, FP])
+    #add function for sma and smm
 
-        return np.divide(np.multiply(numb_of_good,100), len(test))
+    def new_name(self):
+        values = self.generalization()
+
 
 
 

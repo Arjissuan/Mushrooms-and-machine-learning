@@ -1,7 +1,8 @@
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-import os
+from sklearn.preprocessing import OneHotEncoder
+
 
 class DataSource:
     def __init__(self):
@@ -20,23 +21,23 @@ class DataSource:
         return pd.DataFrame(new_df).T
 
     def train_test_data(self, data_frame, size=0.8):
-        edible = data_frame.query('clas=="e"',inplace=False)
-        poisonous = data_frame.query('clas=="p"',inplace=False)
+        edible = data_frame.query('clas=="e"', inplace=False)
+        poisonous = data_frame.query('clas=="p"', inplace=False)
         edible = pd.DataFrame(data=edible.values, columns=edible.columns)
         poisonous = pd.DataFrame(data=poisonous.values, columns=poisonous.columns)
-        tot_poi_le = int(len(poisonous)*size)
-        tot_ed_le = int(len(edible)*size)
+        tot_poi_le = int(len(poisonous) * size)
+        tot_ed_le = int(len(edible) * size)
 
-        training = pd.concat([poisonous.loc[0:tot_poi_le-1,:],
-                              edible.loc[0:tot_ed_le-1, :]
+        training = pd.concat([poisonous.loc[0:tot_poi_le - 1, :],
+                              edible.loc[0:tot_ed_le - 1, :]
                               ], ignore_index=True)
 
-        testing = pd.concat([poisonous.loc[tot_poi_le:len(poisonous),:],
-                            edible.loc[tot_ed_le:len(edible), :]
+        testing = pd.concat([poisonous.loc[tot_poi_le:len(poisonous), :],
+                             edible.loc[tot_ed_le:len(edible), :]
                              ], ignore_index=True)
 
-        return {"Test_y":testing['clas'], "Test_x":testing.drop(columns=['clas']),
-                "Train_y":training['clas'], "Train_x":training.drop(columns=['clas'])}
+        return {"Test_y": testing['clas'], "Test_x": testing.drop(columns=['clas']),
+                "Train_y": training['clas'], "Train_x": training.drop(columns=['clas'])}
 
     def data_for_test_train_fromsci(self, dataframe, size):
         x_train, x_test, y_train, y_test = train_test_split(dataframe.drop(columns=['clas']),
@@ -47,16 +48,18 @@ class DataSource:
 
         return x_train, y_train, x_test, y_test
 
+    # finding percentage of mushroms labeled as edible
+    # should be done data exploring class? Or it will be redundant
+    def edible_percent(self, index, columns, row='e'):
+        cross = pd.crosstab(index=index, columns=columns)
+        funk = lambda x: (x, (cross[x][row] * 100 / np.sum(cross[x])))
+        percentage = dict(map(funk, cross.columns))
+        return pd.DataFrame(index=["e%"], data=percentage)
 
-
-    def edible_percent(self, df, row='t'): #should be done data exploring class? Or it will redundant
-        perc = lambda x: (x, (df[x][row]*100)/np.sum(df[x]))
-        df_perc = dict(map(perc, df.columns))
-        return pd.DataFrame(index=['t%_of_sum'], data=df_perc)
-
-    def exchange_str_to_ints(self, df):
-        cols = df.drop(['clas',"cap-diameter", 'stem-width', 'stem-height'], axis=1 ).columns
-        sets = list(map(lambda x:tuple(set(df[x])), cols))
+    # changing non-numerical values from dataframe ine
+    def exchange_str_to_ints(self, df, cols_to_pass=('clas', "cap-diameter", 'stem-width', 'stem-height')):
+        cols = df.drop(cols_to_pass, axis=1).columns
+        sets = list(map(lambda x: tuple(set(df[x])), cols))
         new_sets = []
         for s in sets:
             lil_set = []
@@ -64,19 +67,37 @@ class DataSource:
                 lil_set.append(i)
             new_sets.append(lil_set)
         func = lambda x: df[cols[x]].replace(to_replace=sets[x], value=new_sets[x])
-        #print(list(zip(sets,new_sets,cols)))
+        # print(list(zip(sets,new_sets,cols)))
         new_df = list(map(func, range(len(cols))))
         new_df = pd.DataFrame(data=new_df.copy()).T
-        fresh_df = pd.concat([df.loc[:, ['clas',"cap-diameter", 'stem-width', 'stem-height']], new_df], axis=1)
+        fresh_df = pd.concat([df.loc[:, ['clas', "cap-diameter", 'stem-width', 'stem-height']], new_df], axis=1)
         return fresh_df
 
-    def exchange_str_to_vect(self, df):
-        cols = df.drop(['clas',"cap-diameter", 'stem-width', 'stem-height'], axis=1).columns
+    # binarization of non-numerical values into 'binary' vectors
+    def exchange_str_to_vect(self, df, cols_to_pass=('clas', "cap-diameter", 'stem-width', 'stem-height')):
+        cols = df.drop(cols_to_pass, axis=1).columns
         sets = list(map(lambda x: tuple(set(df[x])), cols))
-        new_sets = []
+        new_set = []
+        for tank in sets:
+            vect = []
+            for i in range(len(tank)):
+                value = list(np.zeros(len(tank), dtype=int))
+                value[i] = 1
+                vect.append(''.join(str(i) for i in value))
+            new_set.append(vect)
 
+        gener = lambda x: df[cols[x]].replace(to_replace=sets[x], value=new_set[x])
+        new_df = list(map(gener, range(len(cols))))
+        new_df = pd.DataFrame(data=new_df.copy()).T
+        new_df = new_df.applymap(lambda x: list(pd.Series(x.split("0")).replace(to_replace="", value=0)))
+        fresh_df = pd.concat([df.loc[:, ['clas', "cap-diameter", 'stem-width', 'stem-height']], new_df], axis=1)
+        return fresh_df
 
-
-
-
-
+    def aply_one_hot_encoder(self, df):
+        cols = df.drop(['clas', "cap-diameter", 'stem-width', 'stem-height'], axis=1).columns
+        ohe = OneHotEncoder()
+        for column in cols:
+            # df[column] = ohe.fit_transform(X=df[column].to_numpy().reshape(-1,1))
+            wartosc = ohe.fit_transform(X=df[[column]])
+        print(wartosc)
+        return df
