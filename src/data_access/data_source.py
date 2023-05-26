@@ -39,13 +39,12 @@ class DataSource:
         return {"Test_y": testing['clas'], "Test_x": testing.drop(columns=['clas']),
                 "Train_y": training['clas'], "Train_x": training.drop(columns=['clas'])}
 
-    def data_for_test_train_fromsci(self, dataframe, size):
+    def data_for_test_train_fromsci(self, dataframe, size, r_state=42):
         x_train, x_test, y_train, y_test = train_test_split(dataframe.drop(columns=['clas']),
                                                             dataframe['clas'],
                                                             test_size=size,
-                                                            random_state=42,
-                                                            )
-
+                                                            random_state=r_state,
+                                                            ) #42
         return x_train, y_train, x_test, y_test
 
     # finding percentage of mushroms labeled as edible
@@ -56,9 +55,9 @@ class DataSource:
         percentage = dict(map(funk, cross.columns))
         return pd.DataFrame(index=["e%"], data=percentage)
 
-    # changing non-numerical values from dataframe ine
+    # changing categorical values from dataframe ine
     def exchange_str_to_ints(self, df, cols_to_pass=('clas', "cap-diameter", 'stem-width', 'stem-height')):
-        cols = df.drop(cols_to_pass, axis=1).columns
+        cols = df.drop([col for col in cols_to_pass], axis=1).columns
         sets = list(map(lambda x: tuple(set(df[x])), cols))
         new_sets = []
         for s in sets:
@@ -73,9 +72,9 @@ class DataSource:
         fresh_df = pd.concat([df.loc[:, ['clas', "cap-diameter", 'stem-width', 'stem-height']], new_df], axis=1)
         return fresh_df
 
-    # binarization of non-numerical values into 'binary' vectors
+    # binarization of ceterogical values into 'binary' vectors
     def exchange_str_to_vect(self, df, cols_to_pass=('clas', "cap-diameter", 'stem-width', 'stem-height')):
-        cols = df.drop(cols_to_pass, axis=1).columns
+        cols = df.drop([col for col in cols_to_pass], axis=1).columns
         sets = list(map(lambda x: tuple(set(df[x])), cols))
         new_set = []
         for tank in sets:
@@ -93,11 +92,18 @@ class DataSource:
         fresh_df = pd.concat([df.loc[:, ['clas', "cap-diameter", 'stem-width', 'stem-height']], new_df], axis=1)
         return fresh_df
 
-    def aply_one_hot_encoder(self, df):
-        cols = df.drop(['clas', "cap-diameter", 'stem-width', 'stem-height'], axis=1).columns
-        ohe = OneHotEncoder()
-        for column in cols:
-            # df[column] = ohe.fit_transform(X=df[column].to_numpy().reshape(-1,1))
-            wartosc = ohe.fit_transform(X=df[[column]])
-        print(wartosc)
-        return df
+    # Function returns same result as one hot encoder, each category(column with multiple values) is converted into
+    # column. One value from category into one column. They are asigned 1 or 0.
+    def aply_one_hot_encoder(self, df, cols_to_pass=('clas', "cap-diameter", 'stem-width', 'stem-height')):
+        cols = df.drop([col for col in cols_to_pass], axis=1).columns
+        values = list(map(lambda x: tuple(set(df[x])), cols))
+        #print(1*np.logical_not(np.array(df[cols[0]]) != values[0][0]))
+        new_df = pd.DataFrame()
+        for index, col in enumerate(cols):
+            data_funk = lambda x: 1*np.logical_not(np.array(df[col]) != x)
+            data_vects = list(map(data_funk, values[index]))
+            bufor_df = pd.DataFrame(data=data_vects, index=["{}_{}".format(col, str(j)) for j in values[index]]).T
+            new_df = pd.concat([new_df, bufor_df], axis=1)
+        new_df = pd.concat([df.loc[:, [col for col in cols_to_pass]], new_df], axis=1)
+        print(new_df)
+        return new_df

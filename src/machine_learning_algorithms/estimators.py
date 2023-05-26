@@ -43,11 +43,11 @@ class Learning_method:
         test = pd.Series.to_numpy(self.test_y)
         numb_of_good = np.count_nonzero(est == test)
         accuracy = np.divide(np.multiply(numb_of_good,100), len(test))
-        TN = np.logical_and(self.test_y == "e", estim_clas=="e")
-        TP = np.logical_and(self.test_y == "p", estim_clas=="p")
-        FN = np.logical_and(self.test_y=="e", estim_clas=="p")
-        FP = np.logical_and(self.test_y=="p", estim_clas=="e")
-        return np.array([accuracy, TN, TP, FN, FP])
+        TN = np.sum(np.logical_and(self.test_y == "e", estim_clas=="e"))
+        TP = np.sum(np.logical_and(self.test_y == "p", estim_clas=="p"))
+        FN = np.sum(np.logical_and(self.test_y=="e", estim_clas=="p"))
+        FP = np.sum(np.logical_and(self.test_y=="p", estim_clas=="e"))
+        return np.asarray([accuracy, TN, TP, FN, FP])
     #add function for sma and smm
 
     def new_name(self):
