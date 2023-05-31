@@ -15,9 +15,13 @@ class DataSource:
     def get_secondary_data_frame(self):
         return pd.read_csv(self.secondary_data_path, delimiter=";")
 
-    def exchange_nones_to_value(self, data_frame, new_value='v'):
-        funk = lambda x: data_frame[x].replace(np.nan, new_value)
-        new_df = list(map(funk, data_frame.columns))
+    def exchange_nones_to_value(self, *df, new_value='v'):
+        if df == ():
+            df = self.get_secondary_data_frame()
+        else:
+            df = df[0]
+        funk = lambda x: df[x].replace(np.nan, new_value)
+        new_df = list(map(funk, df.columns))
         return pd.DataFrame(new_df).T
 
     def train_test_data(self, data_frame, size=0.8):
@@ -56,7 +60,12 @@ class DataSource:
         return pd.DataFrame(index=["e%"], data=percentage)
 
     # changing categorical values from dataframe ine
-    def exchange_str_to_ints(self, df, cols_to_pass=('clas', "cap-diameter", 'stem-width', 'stem-height')):
+    def exchange_str_to_ints(self, *df, cols_to_pass=('clas', "cap-diameter", 'stem-width', 'stem-height')):
+        if df == ():
+            df = self.get_secondary_data_frame()
+        else:
+            df = df[0]
+
         cols = df.drop([col for col in cols_to_pass], axis=1).columns
         sets = list(map(lambda x: tuple(set(df[x])), cols))
         new_sets = []
@@ -73,7 +82,11 @@ class DataSource:
         return fresh_df
 
     # binarization of ceterogical values into 'binary' vectors
-    def exchange_str_to_vect(self, df, cols_to_pass=('clas', "cap-diameter", 'stem-width', 'stem-height')):
+    def exchange_str_to_vect(self, *df, cols_to_pass=('clas', "cap-diameter", 'stem-width', 'stem-height')):
+        if df == ():
+            df = self.get_secondary_data_frame()
+        else:
+            df = df[0]
         cols = df.drop([col for col in cols_to_pass], axis=1).columns
         sets = list(map(lambda x: tuple(set(df[x])), cols))
         new_set = []
@@ -94,7 +107,12 @@ class DataSource:
 
     # Function returns same result as one hot encoder, each category(column with multiple values) is converted into
     # column. One value from category into one column. They are asigned 1 or 0.
-    def aply_one_hot_encoder(self, df, cols_to_pass=('clas', "cap-diameter", 'stem-width', 'stem-height')):
+    def aply_one_hot_encoder(self, *df, cols_to_pass=('clas', "cap-diameter", 'stem-width', 'stem-height')):
+        if df == ():
+            df = self.get_secondary_data_frame()
+        else:
+            df = df[0]
+
         cols = df.drop([col for col in cols_to_pass], axis=1).columns
         values = list(map(lambda x: tuple(set(df[x])), cols))
         #print(1*np.logical_not(np.array(df[cols[0]]) != values[0][0]))
@@ -105,5 +123,31 @@ class DataSource:
             bufor_df = pd.DataFrame(data=data_vects, index=["{}_{}".format(col, str(j)) for j in values[index]]).T
             new_df = pd.concat([new_df, bufor_df], axis=1)
         new_df = pd.concat([df.loc[:, [col for col in cols_to_pass]], new_df], axis=1)
-        print(new_df)
+        #print(new_df)
         return new_df
+
+    def cross_validation(self, *df, number):
+        if df == ():
+            df = self.get_secondary_data_frame()
+        else:
+            df = df[0]
+        size = 0
+        cross = []
+        while len(df) > size:
+            last_size = size
+            size += int(len(df) / number)
+            if size == len(df) - 1:
+                size += 1
+            part_df = df.iloc[last_size:size, :]
+            cross.append(part_df)
+            print(len(part_df))
+        indexes = np.array(range(number))
+        cross_dict = dict(zip(indexes, cross))
+        zestawy = []
+        for i in cross_dict.keys():
+            xtrain = pd.concat(list(map(lambda x: cross_dict.get(x), indexes[indexes != i]))).drop(columns=['clas'])
+            ytrain = pd.concat(list(map(lambda x: cross_dict.get(x), indexes[indexes != i])))['clas']
+            xtest = cross_dict.get(i).drop(columns=['clas'])
+            ytest = cross_dict.get(i)['clas']
+            zestawy.append((xtest, ytest, xtrain, ytrain))
+        return zestawy

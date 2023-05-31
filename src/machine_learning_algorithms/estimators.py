@@ -38,20 +38,20 @@ class Learning_method:
         est.fit(X=self.train_x, y=self.train_y)
         return est.predict(self.test_x)
 
-    def generalization(self, estim_clas):
+    def generalization(self, estim_clas, used_estimator):
         est = np.asarray(estim_clas)
         test = pd.Series.to_numpy(self.test_y)
         numb_of_good = np.count_nonzero(est == test)
         accuracy = np.divide(np.multiply(numb_of_good,100), len(test))
-        TN = np.sum(np.logical_and(self.test_y == "e", estim_clas=="e"))
-        TP = np.sum(np.logical_and(self.test_y == "p", estim_clas=="p"))
-        FN = np.sum(np.logical_and(self.test_y=="e", estim_clas=="p"))
-        FP = np.sum(np.logical_and(self.test_y=="p", estim_clas=="e"))
-        return np.asarray([accuracy, TN, TP, FN, FP])
+        TN = np.sum(np.logical_and(self.test_y == "e", estim_clas == "e"))
+        TP = np.sum(np.logical_and(self.test_y == "p", estim_clas == "p"))
+        FN = np.sum(np.logical_and(self.test_y == "e", estim_clas == "p"))
+        FP = np.sum(np.logical_and(self.test_y == "p", estim_clas == "e"))
+        return np.array([[accuracy, TN, TP, FN, FP, used_estimator],])
     #add function for sma and smm
 
-    def new_name(self):
-        values = self.generalization()
+
+
 
 
 
