@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, KFold
 from sklearn.preprocessing import OneHotEncoder
 
 
@@ -65,7 +65,7 @@ class DataSource:
             df = self.get_secondary_data_frame()
         else:
             df = df[0]
-
+        print(type(df))
         cols = df.drop([col for col in cols_to_pass], axis=1).columns
         sets = list(map(lambda x: tuple(set(df[x])), cols))
         new_sets = []
@@ -131,16 +131,17 @@ class DataSource:
             df = self.get_secondary_data_frame()
         else:
             df = df[0]
+
         size = 0
         cross = []
         while len(df) > size:
             last_size = size
-            size += int(len(df) / number)
+            size += np.round(len(df) / number, decimals=0).astype(int)
             if size == len(df) - 1:
                 size += 1
             part_df = df.iloc[last_size:size, :]
             cross.append(part_df)
-            print(len(part_df))
+            #print(last_size, size, len(part_df))
         indexes = np.array(range(number))
         cross_dict = dict(zip(indexes, cross))
         zestawy = []
@@ -150,4 +151,23 @@ class DataSource:
             xtest = cross_dict.get(i).drop(columns=['clas'])
             ytest = cross_dict.get(i)['clas']
             zestawy.append((xtest, ytest, xtrain, ytrain))
+        return zestawy
+
+    def cross_vali_Kfold(self, *df, number):
+        if df == ():
+            df = self.get_secondary_data_frame()
+        else:
+            df = df[0]
+
+        kf = KFold(n_splits=number)
+        new_df = df.clas
+        zestawy = []
+        for train, test in kf.split(new_df):
+            print(f"{train} {test}")
+            xtrain = df.iloc[train,:].drop(columns=['clas'])
+            ytrain = df.iloc[train,:]["clas"]
+            ytest = df.iloc[test,:]["clas"]
+            xtest = df.iloc[test,:].drop(columns=["clas"])
+            bufor = (xtest, ytest, xtrain, ytrain)
+            zestawy.append(bufor)
         return zestawy
