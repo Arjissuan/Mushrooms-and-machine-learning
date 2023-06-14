@@ -40,7 +40,8 @@ class Main:
     def analasis_two(self):
         ds = DataSource()
         #df = ds.get_secondary_data_frame()
-        ready_df = ds.exchange_str_to_ints()
+        #ready_df = ds.exchange_str_to_ints()
+        ready_df = ds.aply_one_hot_encoder()
         ready_df = ds.cross_validation(ready_df, number=5)
         result_df = pd.DataFrame(columns=["Accuracy", "TN", "TP", "FN", "FP", "Estimator"])
         for i, data in enumerate(ready_df):
@@ -64,6 +65,7 @@ class Main:
 
 
 if __name__ == '__main__':
+    # Main().analasis_one()
     ds = DataSource()
     ready_df = ds.aply_one_hot_encoder()
     ready_df = ds.cross_vali_Kfold(ready_df,number=5)
@@ -81,7 +83,4 @@ if __name__ == '__main__':
     print(etimator.cross_validation_means(result_df))
 
     Main().analasis_two()
-
-    #Main().analasis_one()
-
 
