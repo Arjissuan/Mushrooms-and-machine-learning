@@ -1,10 +1,7 @@
-import numpy as np
-from sklearn.model_selection import train_test_split
 from src.data_access.data_source import DataSource
 from src.machine_learning_algorithms.estimators import Learning_method
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
+
 
 class Main:
     def __init__(self):
@@ -38,11 +35,10 @@ class Main:
         print(whole_data)
 
     def analasis_two(self):
-        ds = DataSource()
         #df = ds.get_secondary_data_frame()
         #ready_df = ds.exchange_str_to_ints()
-        ready_df = ds.aply_one_hot_encoder()
-        ready_df = ds.cross_validation(ready_df, number=5)
+        ready_df = self.ds.aply_one_hot_encoder()
+        ready_df = self.ds.cross_validation(ready_df, number=5)
         result_df = pd.DataFrame(columns=["Accuracy", "TN", "TP", "FN", "FP", "Estimator"])
         for i, data in enumerate(ready_df):
             print(i)
@@ -63,24 +59,44 @@ class Main:
         print(result_df)
         print(estim.cross_validation_means(result_df))
 
+    def analasis_three(self):
+        ready_df = self.ds.aply_one_hot_encoder()
+        ready_df = self.ds.cross_vali_Kfold(ready_df, number=5)
+        result_df = pd.DataFrame(columns=["Accuracy", "TN", "TP", "FN", "FP", "Estimator"])
+        for i, data in enumerate(ready_df):
+            etimator = Learning_method(data[0], data[1], data[2], data[3])
+            pred1 = etimator.DecisionTree()
+            pred2 = etimator.rand_forest()
+            bufor = pd.DataFrame(data=[
+                etimator.generalization(pred1, "Decision_Tree"),
+                etimator.generalization(pred2, "Rand_forest")
+            ], columns=["Accuracy", "TN", "TP", "FN", "FP", "Estimator"])
+            result_df = pd.concat([result_df, bufor], ignore_index=True)
+        print(result_df)
+        print(etimator.cross_validation_means(result_df))
+
+    def analasis_four(self):
+        ready_df = self.ds.cross_vali_shuffle(number=5, r_state=1, test_size=0.2)
+        result_df = pd.DataFrame(columns=["Accuracy", "TN", "TP", "FN", "FP", "Estimator"])
+        for i, data in enumerate(ready_df):
+            estimator = Learning_method(data[0], data[1], data[2], data[3])
+            pred1 = estimator.DecisionTree()
+            pred2 = estimator.rand_forest()
+            pred3 = estimator.support_vector_machines()
+            bufor = pd.DataFrame(data=[
+                estimator.generalization(pred1, "Decision_Tree"),
+                estimator.generalization(pred2, "Rand_forest"),
+                estimator.generalization(pred3, "SVM")
+            ], columns=["Accuracy", "TN", "TP", "FN", "FP", "Estimator"])
+            result_df = pd.concat([result_df, bufor], ignore_index=True)
+        print(result_df)
+        print(estimator.cross_validation_means(result_df))
+
 
 if __name__ == '__main__':
     # Main().analasis_one()
+    # Main().analasis_two()
+    # Main().analasis_three()
+
     ds = DataSource()
-    ready_df = ds.aply_one_hot_encoder()
-    ready_df = ds.cross_vali_Kfold(ready_df,number=5)
-    result_df = pd.DataFrame(columns=["Accuracy", "TN", "TP", "FN", "FP", "Estimator"])
-    for i, data in enumerate(ready_df):
-        etimator = Learning_method(data[0], data[1], data[2], data[3])
-        pred1 = etimator.DecisionTree()
-        pred2 = etimator.rand_forest()
-        bufor = pd.DataFrame(data=[
-            etimator.generalization(pred1, "Decision_Tree"),
-            etimator.generalization(pred2, "Rand_forest")
-        ],columns= ["Accuracy", "TN", "TP", "FN", "FP", "Estimator"])
-        result_df = pd.concat([result_df, bufor], ignore_index=True)
-    print(result_df)
-    print(etimator.cross_validation_means(result_df))
-
-    Main().analasis_two()
-
+    ds.data_merge()

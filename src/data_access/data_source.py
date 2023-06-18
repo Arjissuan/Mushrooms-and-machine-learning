@@ -1,12 +1,11 @@
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split, KFold
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.model_selection import train_test_split, KFold, StratifiedShuffleSplit
 
 
 class DataSource:
     def __init__(self):
-        self.primary_data_path = "../files/PrimaryData/primary_data_generated.csv"
+        self.primary_data_path = "../files/PrimaryData/primary_data_edited.csv"
         self.secondary_data_path = "../files/SecondaryData/secondary_data_generated.csv"
 
     def get_primary_data_frame(self):
@@ -62,7 +61,7 @@ class DataSource:
     # changing categorical values from dataframe ine
     def exchange_str_to_ints(self, *df, cols_to_pass=('clas', "cap-diameter", 'stem-width', 'stem-height')):
         if df == ():
-            df = self.get_secondary_data_frame()
+            df = self.exchange_nones_to_value()
         else:
             df = df[0]
         print(type(df))
@@ -128,7 +127,7 @@ class DataSource:
 
     def cross_validation(self, *df, number):
         if df == ():
-            df = self.get_secondary_data_frame()
+            df = self.exchange_str_to_ints()
         else:
             df = df[0]
 
@@ -144,24 +143,24 @@ class DataSource:
             #print(last_size, size, len(part_df))
         indexes = np.array(range(number))
         cross_dict = dict(zip(indexes, cross))
-        zestawy = []
+        data_kits = []
         for i in cross_dict.keys():
             xtrain = pd.concat(list(map(lambda x: cross_dict.get(x), indexes[indexes != i]))).drop(columns=['clas'])
             ytrain = pd.concat(list(map(lambda x: cross_dict.get(x), indexes[indexes != i])))['clas']
             xtest = cross_dict.get(i).drop(columns=['clas'])
             ytest = cross_dict.get(i)['clas']
-            zestawy.append((xtest, ytest, xtrain, ytrain))
-        return zestawy
+            data_kits.append((xtest, ytest, xtrain, ytrain))
+        return data_kits
 
     def cross_vali_Kfold(self, *df, number):
         if df == ():
-            df = self.get_secondary_data_frame()
+            df = self.exchange_str_to_ints()
         else:
             df = df[0]
 
         kf = KFold(n_splits=number)
         new_df = df.clas
-        zestawy = []
+        data_kits = []
         for train, test in kf.split(new_df):
             print(f"{train} {test}")
             xtrain = df.iloc[train,:].drop(columns=['clas'])
@@ -169,5 +168,76 @@ class DataSource:
             ytest = df.iloc[test,:]["clas"]
             xtest = df.iloc[test,:].drop(columns=["clas"])
             bufor = (xtest, ytest, xtrain, ytrain)
-            zestawy.append(bufor)
-        return zestawy
+            data_kits.append(bufor)
+        return data_kits
+
+    def cross_vali_shuffle(self, *df, number, r_state, test_size):
+        if df == ():
+            df = self.exchange_str_to_ints()
+            df = self.aply_one_hot_encoder(df)
+        else:
+            df = df[0]
+
+        cf = StratifiedShuffleSplit(n_splits=number, random_state=r_state, test_size=test_size)
+        data_kits = []
+        for train, test in cf.split(df.drop(["clas"], axis=1), df.clas):
+            print(f"  Train index={train}, and lengths = {len(train)}")
+            print(f"  Test index={test}, and lengths= {len(test)}")
+            xtest = df.iloc[test,:].drop(columns=['clas'])
+            ytest = df.iloc[test,:]['clas']
+            xtrain = df.iloc[train, :].drop(columns=['clas'])
+            ytrain = df.iloc[train, :]['clas']
+            bufor = (xtest, ytest, xtrain, ytrain)
+            data_kits.append(bufor)
+        return data_kits
+
+    def data_merge(self, *df):
+        if df == ():
+            df1 = self.get_primary_data_frame()
+            df2 = self.get_secondary_data_frame()
+
+            df1 = self.exchange_nones_to_value(df1)
+            df2 = self.exchange_nones_to_value(df2)
+        else:
+            df1 = df[0]
+            df2 = df[1]
+
+
+        is_in = lambda x, y: 1 if (x in y) else 0  # for str data
+        check_in_range = lambda x, y, z: 1 if (y <= x <= z) else 0  # for int data
+        funk = lambda x: eval(x)
+        col = np.array(df1.iloc[:, 3])
+        vect_funk = np.frompyfunc(funk, 1, 1)
+        vect_check_in_range = np.frompyfunc(check_in_range, 3, 1)
+        new_col  = vect_funk(col)
+        # does not work now properly beacues of means instead of min max values in some rare cases. Not sure what to do about them.
+        colmns = df1.columns
+        new_data = pd.DataFrame(columns=list(colmns)+["family", 'name'])
+        for index in range(0, len(df2)):
+            print(index)
+            for zoom in range(0, len(df1)):
+                bufor = 0
+                wart = pd.Series({"family":np.nan, 'name':np.nan})
+                for name in colmns:
+                    try:
+                        x = df2.loc[index, name]
+                        y = eval(df1.loc[zoom, name])[0]
+                        z = eval(df1.loc[zoom, name])[1]
+                        bufor += check_in_range(x, y, z)
+                    except NameError:
+                        x = df2.loc[index, name]
+                        y = df1.loc[zoom, name]
+                        bufor += is_in(x, y)
+                    except IndexError:
+                        x = df2.loc[index, name]
+                        y = df1.loc[zoom, name]
+                        try:
+                            bufor += is_in(x, y)
+                        except TypeError:
+                            print(x,y)
+                if bufor == len(colmns):
+                    wart = df1.iloc[zoom, 0:2]
+                    break
+
+            counted = pd.concat([wart, df2.iloc[index, :]])
+            new_data = pd.concat([counted, new_data])
