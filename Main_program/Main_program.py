@@ -1,6 +1,7 @@
 from src.data_access.data_source import DataSource
 from src.machine_learning_algorithms.estimators import Learning_method
 import pandas as pd
+from matplotlib import pyplot
 
 
 class Main:
@@ -13,7 +14,7 @@ class Main:
         #ready_df = ds.exchange_str_to_vect(df=df)
         ready_df = self.ds.aply_one_hot_encoder(df)
 
-        x_train, y_train, x_test, y_test = self.ds.data_for_test_train_fromsci(ready_df, 0.2, r_state=45)
+        x_train, y_train, x_test, y_test = self.ds.data_for_test_train_fromsci(ready_df, 0.2, r_state=42)
         # x_test_copy = x_test.loc[:,['habitat', 'season', 'cap-color', 'cap-shape', 'stem-color']]
         # x_train_copy = x_train.loc[:,['habitat', 'season', 'cap-color', 'cap-shape','stem-color']]
 
@@ -32,7 +33,7 @@ class Main:
         ], columns=["Accuracy", "TN", "TP", "FN", "FP", "Estimator"])
         data_for_clas_efi = est.clasification_eficiency(data_generalization)
         whole_data = pd.concat([data_generalization, data_for_clas_efi], axis=1)
-        print(whole_data)
+        return whole_data
 
     def analasis_two(self):
         #df = ds.get_secondary_data_frame()
@@ -89,14 +90,35 @@ class Main:
                 estimator.generalization(pred3, "SVM")
             ], columns=["Accuracy", "TN", "TP", "FN", "FP", "Estimator"])
             result_df = pd.concat([result_df, bufor], ignore_index=True)
-        print(result_df)
-        print(estimator.cross_validation_means(result_df))
+        #print(result_df)
+        # print(estimator.cross_validation_means(result_df))
+        general = estimator.cross_validation_means(result_df)
+        clas_eficien = estimator.clasification_eficiency(general)
+        whole_data = pd.concat([general, clas_eficien], axis=1)
+        print(whole_data)
+        return whole_data
+
+    def analisis_five(self):
+        ds = DataSource()
+        df = ds.exchange_nones_to_value()
+        df = df.drop(columns=["cap-diameter", "stem-width", "stem-height"], axis=1)
+        print(df)
+        ready_df = ds.exchange_str_to_ints(df)
+        x_train, y_train, x_test, y_test = ds.data_for_test_train_fromsci(ready_df, 0.2, r_state=45)
+        estimator = Learning_method(x_test, y_test, x_train, y_train)
+        xtrain_fs, xtest_fs, fs = estimator.Feature_selection()
+        names = fs.get_feature_names_out()
+        for item in range(len(fs.scores_)):
+            print(f"Feature {names[item]}: {fs.scores_[item]}")
+
+        pyplot.figure()
+        pyplot.bar([ix for ix in range(len(fs.scores_))], fs.scores_)
+        pyplot.show()
 
 
 if __name__ == '__main__':
-    # Main().analasis_one()
-    # Main().analasis_two()
-    # Main().analasis_three()
+    #Main().analasis_one().to_csv(sep="\t", path_or_buf="./Analiza.csv")
+    #Main().analasis_four().to_csv(sep="\t", path_or_buf="./Analiza_cross_validacji.csv")
 
-    ds = DataSource()
-    ds.data_merge()
+
+    #ds.data_merge()

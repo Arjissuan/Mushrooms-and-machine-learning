@@ -53,10 +53,21 @@ class DataSource:
     # finding percentage of mushroms labeled as edible
     # should be done data exploring class? Or it will be redundant
     def edible_percent(self, index, columns, row='e'):
-        cross = pd.crosstab(index=index, columns=columns)
-        funk = lambda x: (x, (cross[x][row] * 100 / np.sum(cross[x])))
-        percentage = dict(map(funk, cross.columns))
-        return pd.DataFrame(index=["e%"], data=percentage)
+        if row=="e":
+            cross = pd.crosstab(index=index, columns=columns)
+            funk = lambda x: (x, (cross[x][row] * 100 / np.sum(cross[x])))
+            percentage = dict(map(funk, cross.columns))
+            return pd.DataFrame(index=["edible"], data=percentage)
+        elif row=="p":
+            cross = pd.crosstab(index=index, columns=columns)
+            funk = lambda x: (x, (cross[x][row] * 100 / np.sum(cross[x])))
+            percentage = dict(map(funk, cross.columns))
+            return pd.DataFrame(index=["poisonous"], data=percentage)
+        else:
+            cross = pd.crosstab(index=index, columns=columns)
+            funk = lambda x: (x, (cross[x][row] * 100 / np.sum(cross[x])))
+            percentage = dict(map(funk, cross.columns))
+            return pd.DataFrame(index=[row], data=percentage)
 
     # changing categorical values from dataframe ine
     def exchange_str_to_ints(self, *df, cols_to_pass=('clas', "cap-diameter", 'stem-width', 'stem-height')):
@@ -205,39 +216,41 @@ class DataSource:
 
         is_in = lambda x, y: 1 if (x in y) else 0  # for str data
         check_in_range = lambda x, y, z: 1 if (y <= x <= z) else 0  # for int data
-        funk = lambda x: eval(x)
+        funk = lambda x: list(eval(x))
         col = np.array(df1.iloc[:, 3])
         vect_funk = np.frompyfunc(funk, 1, 1)
         vect_check_in_range = np.frompyfunc(check_in_range, 3, 1)
-        new_col  = vect_funk(col)
-        # does not work now properly beacues of means instead of min max values in some rare cases. Not sure what to do about them.
-        colmns = df1.columns
-        new_data = pd.DataFrame(columns=list(colmns)+["family", 'name'])
-        for index in range(0, len(df2)):
-            print(index)
-            for zoom in range(0, len(df1)):
-                bufor = 0
-                wart = pd.Series({"family":np.nan, 'name':np.nan})
-                for name in colmns:
-                    try:
-                        x = df2.loc[index, name]
-                        y = eval(df1.loc[zoom, name])[0]
-                        z = eval(df1.loc[zoom, name])[1]
-                        bufor += check_in_range(x, y, z)
-                    except NameError:
-                        x = df2.loc[index, name]
-                        y = df1.loc[zoom, name]
-                        bufor += is_in(x, y)
-                    except IndexError:
-                        x = df2.loc[index, name]
-                        y = df1.loc[zoom, name]
-                        try:
-                            bufor += is_in(x, y)
-                        except TypeError:
-                            print(x,y)
-                if bufor == len(colmns):
-                    wart = df1.iloc[zoom, 0:2]
-                    break
+        new_col  = list(vect_funk(col))
+        print(np.array(new_col)[0:30,0], np.array(new_col))
 
-            counted = pd.concat([wart, df2.iloc[index, :]])
-            new_data = pd.concat([counted, new_data])
+        # does not work now properly beacues of means instead of min max values in some rare cases. Not sure what to do about them.
+        # colmns = df1.columns
+        # new_data = pd.DataFrame(columns=list(colmns)+["family", 'name'])
+        # for index in range(0, len(df2)):
+        #     print(index)
+        #     for zoom in range(0, len(df1)):
+        #         bufor = 0
+        #         wart = pd.Series({"family":np.nan, 'name':np.nan})
+        #         for name in colmns:
+        #             try:
+        #                 x = df2.loc[index, name]
+        #                 y = eval(df1.loc[zoom, name])[0]
+        #                 z = eval(df1.loc[zoom, name])[1]
+        #                 bufor += check_in_range(x, y, z)
+        #             except NameError:
+        #                 x = df2.loc[index, name]
+        #                 y = df1.loc[zoom, name]
+        #                 bufor += is_in(x, y)
+        #             except IndexError:
+        #                 x = df2.loc[index, name]
+        #                 y = df1.loc[zoom, name]
+        #                 try:
+        #                     bufor += is_in(x, y)
+        #                 except TypeError:
+        #                     print(x,y)
+        #         if bufor == len(colmns):
+        #             wart = df1.iloc[zoom, 0:2]
+        #             break
+        #
+        #     counted = pd.concat([wart, df2.iloc[index, :]])
+        #     new_data = pd.concat([counted, new_data])

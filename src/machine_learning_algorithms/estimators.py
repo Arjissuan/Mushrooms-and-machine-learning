@@ -1,3 +1,4 @@
+import numpy
 import numpy as np
 import pandas as pd
 from sklearn import svm
@@ -5,6 +6,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn import tree
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neural_network import MLPClassifier
+from sklearn.feature_selection import SelectKBest, chi2
 
 class Learning_method:
     def __init__(self, test_x, test_y, train_x, train_y):
@@ -50,17 +52,30 @@ class Learning_method:
         return [accuracy, TN, TP, FN, FP, used_estimator]
 
     def cross_validation_means(self, df):
+        column = df.drop(columns=["Estimator"], axis=1).columns
         estimators = tuple(set(df.Estimator))
-        print(estimators)
-        means = lambda x: (x, np.mean(df[df.Estimator == x].Accuracy.astype(float)))
-        values = dict(map(means, estimators))
-        return values
+        means = lambda x: (x, np.mean(df[df.Estimator == x][column[i]].astype(float)))
+        values = [[] for item in estimators]
+        for i in range(len(column)):
+            bufo = dict(map(means, estimators))
+            for j in range(len(values)):
+                values[j].append(bufo[estimators[j]])
+        for indx in range(len(estimators)):
+            values[indx].append(estimators[indx])
+        new_df = pd.DataFrame(data=np.array(values), columns=df.columns)
+        return new_df
 
     def clasification_eficiency(self, array):
-        sensitivity = array["TP"]/(array["TP"]+array["FN"])
-        specificity = array["TN"]/(array["TN"]+array["FP"])
-        PPV = array["TP"]/(array["TP"]+array["FP"])
-        NPV = array["TN"]/(array["TN"]+array["FN"])
+        #print(array)
+        sensitivity = array["TP"].astype(np.float64)/(array["TP"].astype(np.float64)+array["FN"].astype(numpy.float64))
+        specificity = array["TN"].astype(np.float64)/(array["TN"].astype(np.float64)+array["FP"].astype(np.float64))
+        PPV = array["TP"].astype(np.float64)/(array["TP"].astype(np.float64)+array["FP"].astype(np.float64))
+        NPV = array["TN"].astype(np.float64)/(array["TN"].astype(np.float64)+array["FN"].astype(np.float64))
         return pd.DataFrame({"sensitivity":sensitivity, "specificity":specificity, "PPV":PPV, "NPV":NPV})
 
-
+    def Feature_selection(self):
+        fs = SelectKBest(score_func=chi2, k='all')
+        fs.fit(self.train_x, self.train_y)
+        Xtrain_fs = fs.transform(self.train_x)
+        Xtest_fs = fs.transform(self.test_x)
+        return Xtest_fs, Xtrain_fs, fs
