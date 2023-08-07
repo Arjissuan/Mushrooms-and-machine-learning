@@ -10,11 +10,13 @@ class Main:
 
     def analasis_one(self):
         df = self.ds.get_secondary_data_frame()
-        ready_df = self.ds.exchange_str_to_ints(self.ds.exchange_nones_to_value(df, new_value='v'))
+        #ready_df = self.ds.exchange_str_to_ints(self.ds.exchange_nones_to_value(df, new_value='v'))
         #ready_df = ds.exchange_str_to_vect(df=df)
         ready_df = self.ds.aply_one_hot_encoder(df)
+        print(len(ready_df))
 
-        x_train, y_train, x_test, y_test = self.ds.data_for_test_train_fromsci(ready_df, 0.2, r_state=42)
+        x_train, y_train, x_test, y_test = self.ds.data_for_test_train_fromsci(ready_df, 0.2, r_state=40)
+        print(len(x_train), len(x_test))
         # x_test_copy = x_test.loc[:,['habitat', 'season', 'cap-color', 'cap-shape', 'stem-color']]
         # x_train_copy = x_train.loc[:,['habitat', 'season', 'cap-color', 'cap-shape','stem-color']]
 
@@ -117,8 +119,29 @@ class Main:
 
 
 if __name__ == '__main__':
-    #Main().analasis_one().to_csv(sep="\t", path_or_buf="./Analiza.csv")
+    Main().analasis_one().to_csv(sep="\t", path_or_buf="./Analiza_test.csv")
     #Main().analasis_four().to_csv(sep="\t", path_or_buf="./Analiza_cross_validacji.csv")
+    ds = DataSource()
+    # # new_df = ds.data_merge()
+    # # new_df.to_csv(path_or_buf="./Merged_secodnary_primary.csv", sep="\t")
 
+    df = pd.read_csv(sep="\t", filepath_or_buffer="./Merged_secodnary_primary.csv", index_col=0).drop(columns=["family", 'cap-shape', 'cap-color', 'does-bruise-or -bleed', "gill-attachment", "gill-spacing", "gill-color", "stem-root", "stem-surface", "stem-color", "veil-type", "veil-color", "has-ring", "ring-type", "spore-print-color", "habitat"])
 
-    #ds.data_merge()
+    mushrooms = ["Cep", "Bay Bolete", "Chanterelle", "Parasol Mushroom", "Saffron Milk Cap"]
+    other_shrooms = [item for item in set(df['name']) if item not in mushrooms]
+    df = ds.aply_one_hot_encoder(df, cols_to_pass=('name', "cap-diameter", 'stem-width', 'stem-height')).dropna()
+    x_train, y_train, x_test, y_test = ds.data_for_test_train_fromsci(df, clas="name", size=0.2, r_state=40)
+    est = Learning_method(x_test, y_test, x_train, y_train)
+    pred1 = est.Bayas()
+    pred2 = est.rand_forest()
+    pred3 = est.DecisionTree()
+    pred4 = est.support_vector_machines()
+    data_gene = pd.DataFrame(data=[
+        est.generalization(pred1, "Bayas", pred_val=mushrooms, Het_pred_val=other_shrooms),
+        est.generalization(pred2, "Rand_forest", pred_val=mushrooms, Het_pred_val=other_shrooms),
+        est.generalization(pred3, "DecisionTree", pred_val=mushrooms, Het_pred_val=other_shrooms),
+        est.generalization(pred4, "SVM", pred_val=mushrooms, Het_pred_val=other_shrooms)
+    ], columns=["Accuracy", "TN", "TP", "FN", "FP", "Estimator"])
+    classifi_effi = est.clasification_eficiency(data_gene)
+    whole_data = pd.concat([data_gene, classifi_effi], axis=1)
+    whole_data.to_csv(path_or_buf="./Additional_analasis2.csv", sep="\t")

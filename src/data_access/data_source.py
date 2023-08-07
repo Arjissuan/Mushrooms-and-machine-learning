@@ -23,9 +23,9 @@ class DataSource:
         new_df = list(map(funk, df.columns))
         return pd.DataFrame(new_df).T
 
-    def train_test_data(self, data_frame, size=0.8):
-        edible = data_frame.query('clas=="e"', inplace=False)
-        poisonous = data_frame.query('clas=="p"', inplace=False)
+    def train_test_data(self, data_frame, size=0.8, clas="clas"):
+        edible = data_frame.query(f'{clas}=="e"', inplace=False)
+        poisonous = data_frame.query(f'{clas}=="p"', inplace=False)
         edible = pd.DataFrame(data=edible.values, columns=edible.columns)
         poisonous = pd.DataFrame(data=poisonous.values, columns=poisonous.columns)
         tot_poi_le = int(len(poisonous) * size)
@@ -42,9 +42,9 @@ class DataSource:
         return {"Test_y": testing['clas'], "Test_x": testing.drop(columns=['clas']),
                 "Train_y": training['clas'], "Train_x": training.drop(columns=['clas'])}
 
-    def data_for_test_train_fromsci(self, dataframe, size, r_state=42):
-        x_train, x_test, y_train, y_test = train_test_split(dataframe.drop(columns=['clas']),
-                                                            dataframe['clas'],
+    def data_for_test_train_fromsci(self, dataframe, size=0.8, r_state=42, clas='clas'):
+        x_train, x_test, y_train, y_test = train_test_split(dataframe.drop(columns=[clas]),
+                                                            dataframe[clas],
                                                             test_size=size,
                                                             random_state=r_state,
                                                             ) #42
@@ -206,51 +206,47 @@ class DataSource:
         if df == ():
             df1 = self.get_primary_data_frame()
             df2 = self.get_secondary_data_frame()
+            numeric_cols = df2.select_dtypes(include=np.number).columns.tolist()
 
             df1 = self.exchange_nones_to_value(df1)
             df2 = self.exchange_nones_to_value(df2)
         else:
             df1 = df[0]
             df2 = df[1]
+            numeric_cols = df2.select_dtypes(include=np.number).columns.tolist()
+
+        numeric_min = lambda x: list(map(float, x.strip('[]][').split(",")))[0]
+        numeric_max = lambda x: list(map(float, x.strip("[]][").split(",") ))[-1]
+
+        numeric_is_in = lambda y, z: True if y <= df2[col][indx] <= z else False
+        is_in = lambda y: True if df2[col][indx] in y else False
+
+        family = []
+        name = []
+        for indx in range(len(df2)):
+            bufor = []
+            for col in df2.columns:
+                vector = []
+                if col in numeric_cols:
+                    min = list(map(lambda x: numeric_min(x), df1[col]))
+                    max = list(map(lambda x: numeric_max(x), df1[col]))
+                    vector.append(list(map(numeric_is_in, min, max)))
+                elif col not in numeric_cols:
+                    vector.append(list(map(is_in, df1[col])))
+                bufor.append(vector)
+            indx_array = np.array(bufor).T
+            try:
+                which_one = np.where(np.sum(indx_array, axis=2)[:, 0] == 21)[0][0]
+                family.append(df1["family"][which_one])
+                name.append(df1["name"][which_one])
+            except IndexError:
+                family.append(np.nan)
+                name.append(np.nan)
+            print(indx)
+
+        df2["family"] = family
+        df2["name"] = name
+        return df2
 
 
-        is_in = lambda x, y: 1 if (x in y) else 0  # for str data
-        check_in_range = lambda x, y, z: 1 if (y <= x <= z) else 0  # for int data
-        funk = lambda x: list(eval(x))
-        col = np.array(df1.iloc[:, 3])
-        vect_funk = np.frompyfunc(funk, 1, 1)
-        vect_check_in_range = np.frompyfunc(check_in_range, 3, 1)
-        new_col  = list(vect_funk(col))
-        print(np.array(new_col)[0:30,0], np.array(new_col))
 
-        # does not work now properly beacues of means instead of min max values in some rare cases. Not sure what to do about them.
-        # colmns = df1.columns
-        # new_data = pd.DataFrame(columns=list(colmns)+["family", 'name'])
-        # for index in range(0, len(df2)):
-        #     print(index)
-        #     for zoom in range(0, len(df1)):
-        #         bufor = 0
-        #         wart = pd.Series({"family":np.nan, 'name':np.nan})
-        #         for name in colmns:
-        #             try:
-        #                 x = df2.loc[index, name]
-        #                 y = eval(df1.loc[zoom, name])[0]
-        #                 z = eval(df1.loc[zoom, name])[1]
-        #                 bufor += check_in_range(x, y, z)
-        #             except NameError:
-        #                 x = df2.loc[index, name]
-        #                 y = df1.loc[zoom, name]
-        #                 bufor += is_in(x, y)
-        #             except IndexError:
-        #                 x = df2.loc[index, name]
-        #                 y = df1.loc[zoom, name]
-        #                 try:
-        #                     bufor += is_in(x, y)
-        #                 except TypeError:
-        #                     print(x,y)
-        #         if bufor == len(colmns):
-        #             wart = df1.iloc[zoom, 0:2]
-        #             break
-        #
-        #     counted = pd.concat([wart, df2.iloc[index, :]])
-        #     new_data = pd.concat([counted, new_data])
